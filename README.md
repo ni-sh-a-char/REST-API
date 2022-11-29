@@ -1,4 +1,3 @@
-# Team-Silent-Killer
 # Major Project
 ## Problem Statement: 
 > ####  (Ministry of Skill Development and Entrepreneurship)
