@@ -1,5 +1,5 @@
 # REST‑API  
-**REST API for performing CURD operations using Spring Boot and MongoDB**  
+**REST API for performing CURD operations using Spring Boot and Mongo‑DB**  
 
 ---  
 
@@ -7,250 +7,200 @@
 
 | Section | Description |
 |---------|-------------|
-| **1. Overview** | What the project does |
-| **2. Prerequisites** | Software you need before installing |
-| **3. Installation** | How to get the code and set it up locally |
-| **4. Configuration** | Application properties, MongoDB connection, profiles |
-| **5. Build & Run** | Maven/Gradle commands, Docker support |
-| **6. Usage** | Starting the service and accessing the UI (Swagger) |
-| **7. API Documentation** | Detailed list of endpoints, request/response schemas |
-| **8. Example Calls** | `curl` / Postman snippets for each operation |
-| **9. Testing** | Running unit/integration tests |
-| **10. Deployment** | Docker, Kubernetes, CI/CD hints |
-| **11. Contributing** | How to contribute to the project |
-| **12. License** | License information |
+| **1️⃣ Overview** | What the project does and its main features |
+| **2️⃣ Prerequisites** | Software you need before you can install |
+| **3️⃣ Installation** | How to get the code, configure it and run it locally |
+| **4️⃣ Usage** | Starting the service, environment variables and health checks |
+| **5️⃣ API Documentation** | Full list of endpoints, request/response schemas and HTTP status codes |
+| **6️⃣ Examples** | `curl`/Postman snippets for each operation |
+| **7️⃣ Testing** | Running the unit/integration test suite |
+| **8️⃣ Swagger UI** | Interactive API explorer |
+| **9️⃣ Deployment** | Quick notes for Docker/Kubernetes or cloud providers |
+| **🔟 Contributing** | How to submit bugs, feature requests or pull‑requests |
+| **📄 License** | Project licensing information |
 
 ---  
 
-## 1. Overview  
+## 1️⃣ Overview  
 
-`REST-API` is a lightweight Spring Boot application that demonstrates **C**reate, **U**pdate, **R**ead and **D**elete (CRUD) operations on a MongoDB collection.  
+`REST-API` is a minimal **Spring Boot** application that demonstrates how to build a **CRUD** (Create‑Read‑Update‑Delete) service backed by **MongoDB**.  
 
-* **Technology stack** – Spring Boot 3.x, Spring Data MongoDB, Maven (or Gradle), Java 17+, MongoDB 6.x, Swagger UI (OpenAPI 3).  
+* **Tech stack** – Java 17, Spring Boot 3.x, Spring Data MongoDB, Maven, Lombok, MapStruct, JUnit 5, Testcontainers.  
 * **Features** –  
-  * Fully typed domain model (`User` by default)  
-  * Reactive (WebFlux) **or** classic MVC implementation (choose via profile)  
-  * Global exception handling & validation (JSR‑380)  
-  * Swagger UI for interactive API exploration  
-  * Dockerfile for containerised deployment  
+  * Fully typed domain model (`User`) with validation.  
+  * Repository abstraction via Spring Data MongoDB.  
+  * Service layer with business‑logic separation.  
+  * Global exception handling (`@RestControllerAdvice`).  
+  * OpenAPI/Swagger documentation (`springdoc-openapi`).  
+  * Dockerfile for containerised builds.  
 
 ---  
 
-## 2. Prerequisites  
+## 2️⃣ Prerequisites  
 
 | Tool | Minimum version | Why |
 |------|----------------|-----|
-| **Java** | 17 (OpenJDK) | Spring Boot 3 requires Java 17+ |
-| **Maven** | 3.8.6 (or Gradle 8.x) | Build & dependency management |
-| **MongoDB** | 6.0 (or 5.x) | Data store |
-| **Docker** *(optional)* | 20.10+ | Build & run container image |
-| **Git** | any | Clone the repository |
-| **cURL / HTTP client** | any | Test the API |
+| **Java** | 17 (or newer) | Spring Boot 3 requires Java 17+. |
+| **Maven** | 3.8.5+ | Build & dependency management. |
+| **MongoDB** | 5.0+ (or a running Atlas cluster) | Persistence layer. |
+| **Git** | any | Clone the repository. |
+| **Docker** *(optional)* | 20.10+ | Build/run the container image. |
+| **cURL / HTTPie / Postman** | – | Test the endpoints. |
 
-> **Tip** – If you prefer the Gradle wrapper, all commands below work with `./gradlew` as well.
+> **Tip** – If you don’t have a local MongoDB instance, you can spin one up with Docker:  
+
+```bash
+docker run -d --name rest-api-mongo -p 27017:27017 mongo:6.0
+```
 
 ---  
 
-## 3. Installation  
+## 3️⃣ Installation  
+
+### 3.1 Clone the repository  
 
 ```bash
-# 1️⃣ Clone the repository
 git clone https://github.com/your‑org/REST-API.git
 cd REST-API
-
-# 2️⃣ (Optional) Choose the build tool
-# Maven (default)
-./mvnw clean install
-
-# Gradle (if you prefer)
-./gradlew clean build
 ```
 
-The build will:
+### 3.2 Configure the MongoDB connection  
 
-* Resolve all dependencies (Spring Boot starters, Lombok, etc.)  
-* Run unit tests (see §9)  
-* Package the application as an executable JAR: `target/rest-api-0.1.0.jar`
+The default configuration expects a MongoDB server on `mongodb://localhost:27017/restapi`.  
+You can override it in three ways:
 
----  
+| Method | How |
+|--------|-----|
+| **application.properties** (recommended for local dev) | Edit `src/main/resources/application.properties` and set `spring.data.mongodb.uri`. |
+| **Environment variable** | `MONGODB_URI=mongodb://host:port/database` |
+| **Command‑line argument** | `--spring.data.mongodb.uri=mongodb://host:port/database` |
 
-## 4. Configuration  
+Example `application.properties` snippet:
 
-All configuration lives in `src/main/resources/application.yml`.  
-A minimal configuration for a local MongoDB instance looks like:
+```properties
+spring.data.mongodb.uri=mongodb://localhost:27017/restapi
+spring.data.mongodb.auto-index-creation=true
 
-```yaml
-spring:
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/restapi-db
-  mvc:
-    pathmatch:
-      matching-strategy: ant_path_matcher   # required for Spring Boot 3.x compatibility
-
-server:
-  port: 8080
-
-# Enable Swagger UI only in dev profile
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
+# Server port (optional)
+server.port=8080
 ```
 
-### Profiles  
-
-| Profile | Purpose |
-|---------|---------|
-| `dev` (default) | Enables Swagger UI, verbose logging |
-| `prod` | Disables Swagger UI, sets `logging.level.root=INFO` |
-| `test` | In‑memory MongoDB (via `de.flapdoodle.embed.mongo`) for integration tests |
-
-You can activate a profile with:
+### 3.3 Build the project  
 
 ```bash
-# Maven
-./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
-
-# JAR
-java -jar target/rest-api-0.1.0.jar --spring.profiles.active=prod
+# Clean and package (creates an executable jar)
+mvn clean package
 ```
 
----  
-
-## 5. Build & Run  
-
-### 5.1 Run directly (JAR)
+If you want to skip tests (e.g., during a quick prototype):
 
 ```bash
-# Build first (if you haven't)
-./mvnw clean package -DskipTests
-
-# Run
-java -jar target/rest-api-0.1.0.jar
+mvn clean package -DskipTests
 ```
 
-The service starts on **http://localhost:8080**.  
-
-### 5.2 Run with Maven (hot‑reload)
+### 3.4 Run the application  
 
 ```bash
-./mvnw spring-boot:run
+# Using Maven
+mvn spring-boot:run
+
+# Or run the fat‑jar directly
+java -jar target/rest-api-0.0.1-SNAPSHOT.jar
 ```
 
-### 5.3 Docker  
+The service will start on **http://localhost:8080** (or the port you configured).
+
+### 3.5 (Optional) Run with Docker  
 
 ```bash
 # Build the image
 docker build -t rest-api:latest .
 
-# Run container (MongoDB must be reachable)
+# Run the container (replace MONGODB_URI if needed)
 docker run -d -p 8080:8080 \
-  -e SPRING_DATA_MONGODB_URI=mongodb://host.docker.internal:27017/restapi-db \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/restapi \
   --name rest-api \
   rest-api:latest
 ```
 
-> **Docker‑Compose** (optional) – a ready‑made `docker-compose.yml` is provided:
-
-```yaml
-version: "3.9"
-services:
-  mongo:
-    image: mongo:6
-    container_name: mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-
-  rest-api:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/restapi-db
-    depends_on:
-      - mongo
-
-volumes:
-  mongo-data:
-```
-
-Run with `docker-compose up -d`.
-
 ---  
 
-## 6. Usage  
+## 4️⃣ Usage  
 
-### 6.1 Swagger UI  
+### 4️⃣1 Health‑check  
 
-Open a browser and navigate to:
-
-```
-http://localhost:8080/swagger-ui.html
+```bash
+curl -s http://localhost:8080/actuator/health | jq .
 ```
 
-All endpoints, request/response models, and example payloads are displayed automatically.
-
-### 6.2 Health & Metrics  
-
-* **Health** – `GET /actuator/health`  
-* **Metrics** – `GET /actuator/metrics` (requires `actuator` dependency, enabled by default)
-
----  
-
-## 7. API Documentation  
-
-| Method | Path | Description | Request Body | Success Response | Errors |
-|--------|------|-------------|--------------|------------------|--------|
-| **POST** | `/api/users` | Create a new user | `UserDTO` (JSON) | `201 Created` + created `User` | `400 Bad Request` (validation) |
-| **GET** | `/api/users` | Retrieve all users | – | `200 OK` + `List<User>` | `500 Internal Server Error` |
-| **GET** | `/api/users/{id}` | Retrieve a user by ID | – | `200 OK` + `User` | `404 Not Found` |
-| **PUT** | `/api/users/{id}` | Replace an existing user | `UserDTO` | `200 OK` + updated `User` | `400 Bad Request`, `404 Not Found` |
-| **PATCH** | `/api/users/{id}` | Partially update a user | `Map<String,Object>` (JSON) | `200 OK` + updated `User` | `400 Bad Request`, `404 Not Found` |
-| **DELETE** | `/api/users/{id}` | Delete a user | – | `204 No Content` | `404 Not Found` |
-
-### 7.1 Data Model  
+Expected output (when everything is up):
 
 ```json
 {
-  "id": "63f1c2a5e4b0c9a7d5f6e8b2",   // MongoDB ObjectId (generated)
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.doe@example.com",
-  "age": 30,
-  "createdAt": "2024-09-26T12:34:56.789Z"
+  "status": "UP",
+  "components": {
+    "mongo": {
+      "status": "UP",
+      "details": {
+        "database": "restapi",
+        "type": "MongoDB"
+      }
+    },
+    "diskSpace": { ... }
+  }
 }
 ```
 
-*All fields except `id` and `createdAt` are required when creating a user.*  
+### 4️⃣2 API base URL  
 
-### 7.2 Validation Rules  
+All CRUD endpoints are rooted at **`/api/v1/users`**.
+
+| Verb | Path | Description |
+|------|------|-------------|
+| `POST`   | `/api/v1/users` | Create a new user |
+| `GET`    | `/api/v1/users` | List all users (paginated) |
+| `GET`    | `/api/v1/users/{id}` | Retrieve a single user |
+| `PUT`    | `/api/v1/users/{id}` | Replace a user |
+| `PATCH`  | `/api/v1/users/{id}` | Partial update |
+| `DELETE` | `/api/v1/users/{id}` | Delete a user |
+
+---  
+
+## 5️⃣ API Documentation  
+
+> The project ships with **OpenAPI 3** documentation generated by `springdoc-openapi`.  
+> Visit **`http://localhost:8080/swagger-ui.html`** (or `/swagger-ui/index.html`) after the app starts.
+
+Below is a concise reference for each endpoint.
+
+### 5.1 Data Model  
+
+```json
+{
+  "id": "String (Mongo ObjectId)",
+  "firstName": "String (required, 1‑50 chars)",
+  "lastName": "String (required, 1‑50 chars)",
+  "email": "String (required, valid email, unique)",
+  "age": "Integer (optional, >=0)",
+  "createdAt": "ISO‑8601 timestamp (generated)",
+  "updatedAt": "ISO‑8601 timestamp (generated)"
+}
+```
+
+### 5.2 Endpoints  
+
+| Method | URL | Request Body | Success response | Error responses |
+|--------|-----|--------------|------------------|-----------------|
+| **Create** | `POST /api/v1/users` | `UserDTO` (without `id`) | `201 Created` <br/>`Location: /api/v1/users/{id}` <br/>Body: created user | `400 Bad Request` (validation) <br/>`409 Conflict` (email already exists) |
+| **List** | `GET /api/v1/users` | – | `200 OK` <br/>Body: `Page<UserDTO>` (fields: `content`, `pageable`, `totalElements`, …) | `500 Internal Server Error` |
+| **Get** | `GET /api/v1/users/{id}` | – | `200 OK` <br/>Body: `UserDTO` | `404 Not Found` |
+| **Replace** | `PUT /api/v1/users/{id}` | Full `UserDTO` (all fields required) | `200 OK` <br/>Body: updated user | `400 Bad Request` <br/>`404 Not Found` |
+| **Partial Update** | `PATCH /api/v1/users/{id}` | `Map<String,Object>` or `UserPatchDTO` (only fields to change) | `200 OK` <br/>Body: updated user | `400 Bad Request` <br/>`404 Not Found` |
+| **Delete** | `DELETE /api/v1/users/{id}` | – | `204 No Content` | `404 Not Found` |
+
+#### Validation rules (Spring `@Valid`)
 
 | Field | Constraint |
 |-------|------------|
-| `firstName` | `@NotBlank`, max 50 chars |
-| `lastName` | `@NotBlank`, max 50 chars |
-| `email` | `@Email`, unique (MongoDB index) |
-| `age` | `@Min(0)`, `@Max(150)` |
-
-If validation fails, the API returns:
-
-```json
-{
-  "timestamp": "2025-09-26T14:12:34.567+00:00",
-  "status": 400,
-  "errors": [
-    {
-      "field": "email",
-      "message": "must be a well‑formed email address"
-    }
-  ]
-}
-```
-
----  
-
-##
+| `firstName` / `lastName` | `@NotBlank`, `@Size(min=1,max=50)` |
+| `email` | `@NotBlank`, `@Email`, unique index in
